@@ -182,21 +182,33 @@ ORDER BY month, driver;
 Equivalent PostgreSQL version:
 
 ```sql
+WITH trip_events AS (
+    SELECT
+        r.id_ride,
+        r.id_driver,
+        MIN(re.created_at) FILTER (
+            WHERE re.description = 'Status changed to pickup'
+        ) AS pickup_at,
+        MIN(re.created_at) FILTER (
+            WHERE re.description = 'Status changed to dropoff'
+        ) AS dropoff_at
+    FROM ride AS r
+    JOIN ride_event AS re ON re.id_ride = r.id_ride
+    WHERE re.description IN ('Status changed to pickup', 'Status changed to dropoff')
+    GROUP BY r.id_ride, r.id_driver
+)
 SELECT
-    TO_CHAR(DATE_TRUNC('month', dropoff_event.created_at), 'YYYY-MM') AS month,
-    CONCAT(driver.first_name, ' ', driver.last_name) AS driver,
+    TO_CHAR(DATE_TRUNC('month', te.dropoff_at), 'YYYY-MM') AS month,
+    CONCAT(u.first_name, ' ', LEFT(u.last_name, 1)) AS driver,
     COUNT(*) AS trip_count
-FROM ride AS r
-JOIN "user" AS driver ON driver.id_user = r.id_driver
-JOIN ride_event AS pickup_event
-    ON pickup_event.id_ride = r.id_ride
-   AND pickup_event.description = 'Status changed to pickup'
-JOIN ride_event AS dropoff_event
-    ON dropoff_event.id_ride = r.id_ride
-   AND dropoff_event.description = 'Status changed to dropoff'
-WHERE dropoff_event.created_at - pickup_event.created_at > INTERVAL '1 hour'
-GROUP BY 1, 2
-ORDER BY 1, 2;
+FROM trip_events AS te
+JOIN "user" AS u ON u.id_user = te.id_driver
+WHERE te.pickup_at IS NOT NULL
+  AND te.dropoff_at IS NOT NULL
+  AND te.dropoff_at > te.pickup_at
+  AND te.dropoff_at - te.pickup_at > INTERVAL '1 hour'
+GROUP BY month, driver
+ORDER BY month, driver;
 ```
 
 ## Design decisions
