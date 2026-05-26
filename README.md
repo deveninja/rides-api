@@ -151,7 +151,35 @@ The assessment also asks for a raw SQL report that groups trips longer than one 
 - Group by driver and month
 - Filter to durations greater than one hour
 
-Example PostgreSQL version:
+Example MySQL/MariaDB version (matches this project environment):
+
+```sql
+WITH trip_events AS (
+    SELECT
+        r.id_ride,
+        r.id_driver,
+        MIN(CASE WHEN re.description = 'Status changed to pickup' THEN re.created_at END) AS pickup_at,
+        MIN(CASE WHEN re.description = 'Status changed to dropoff' THEN re.created_at END) AS dropoff_at
+    FROM ride AS r
+    JOIN ride_event AS re ON re.id_ride = r.id_ride
+    WHERE re.description IN ('Status changed to pickup', 'Status changed to dropoff')
+    GROUP BY r.id_ride, r.id_driver
+)
+SELECT
+    DATE_FORMAT(te.dropoff_at, '%Y-%m') AS month,
+    CONCAT(u.first_name, ' ', LEFT(u.last_name, 1)) AS driver,
+    COUNT(*) AS trip_count
+FROM trip_events AS te
+JOIN user AS u ON u.id_user = te.id_driver
+WHERE te.pickup_at IS NOT NULL
+  AND te.dropoff_at IS NOT NULL
+  AND te.dropoff_at > te.pickup_at
+  AND TIMESTAMPDIFF(MINUTE, te.pickup_at, te.dropoff_at) > 60
+GROUP BY month, driver
+ORDER BY month, driver;
+```
+
+Equivalent PostgreSQL version:
 
 ```sql
 SELECT
