@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wingz-ride-api"
+version = "0.1.0"
+description = "Production-grade Django REST API for managing rides and ride events"
+readme = "README.md"
+requires-python = ">=3.11"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+  "Django>=4.2,<5.0",
+  "djangorestframework>=3.15,<4.0",
+  "django-filter>=24.2,<25.0",
+  "django-environ>=0.11,<1.0",
+  "drf-spectacular>=0.28,<1.0",
+]
+
+[project.optional-dependencies]
+postgres = ["psycopg[binary]>=3.2,<4.0"]
+mysql = ["mysqlclient>=2.2,<3.0"]
+oracle = ["oracledb>=2.4,<3.0"]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["wingz_api*", "rides*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "wingz_api.settings"
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
