@@ -2,8 +2,9 @@ Metadata-Version: 2.4
 Name: wingz-ride-api
 Version: 0.1.0
 Summary: Production-grade Django REST API for managing rides and ride events
-Requires-Python: >=3.11
+Requires-Python: <3.14,>=3.11
 Description-Content-Type: text/markdown
+License-File: LICENSE
 Requires-Dist: Django<5.0,>=4.2
 Requires-Dist: djangorestframework<4.0,>=3.15
 Requires-Dist: django-filter<25.0,>=24.2
@@ -15,6 +16,7 @@ Provides-Extra: mysql
 Requires-Dist: mysqlclient<3.0,>=2.2; extra == "mysql"
 Provides-Extra: oracle
 Requires-Dist: oracledb<3.0,>=2.4; extra == "oracle"
+Dynamic: license-file
 
 # Wingz Ride API
 
