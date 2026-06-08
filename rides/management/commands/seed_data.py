@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from itertools import count
 import random
 from dataclasses import dataclass
 from datetime import timedelta
@@ -107,10 +108,10 @@ class Command(BaseCommand):
         random.seed(options["seed"])
         counts = SeedCounts(
             admins=max(1, options["admins"]),
-            drivers=max(1, options["drivers"]),
-            riders=max(1, options["riders"]),
-            supports=max(0, options["supports"]),
-            rides=max(1, options["rides"]),
+            drivers=max(10, options["drivers"]),
+            riders=max(20, options["riders"]),
+            supports=max(1, options["supports"]),
+            rides=max(10, options["rides"]),
         )
         password = options["password"]
 
@@ -118,10 +119,23 @@ class Command(BaseCommand):
             if options["reset"]:
                 self._reset_data()
 
+            self.stdout.write("Starting admin creation")
             admins = self._ensure_admin_users(counts.admins, password)
+            self.stdout.write("Starting driver creation")
             drivers = self._create_users(counts.drivers, User.RoleChoices.DRIVER, "driver", password)
+            self.stdout.write("Starting rider creation")
             riders = self._create_users(counts.riders, User.RoleChoices.RIDER, "rider", password)
+            self.stdout.write("Starting ride creation")
             self._create_users(counts.supports, User.RoleChoices.SUPPORT, "support", password)
+
+
+            drivers = list(
+                User.objects.filter(role=User.RoleChoices.DRIVER)
+            )
+
+            riders = list(
+                User.objects.filter(role=User.RoleChoices.RIDER)
+            )
 
             rides = self._create_rides(counts.rides, riders, drivers)
             events = self._create_ride_events(rides)
@@ -141,6 +155,7 @@ class Command(BaseCommand):
     def _ensure_admin_users(self, count: int, password: str) -> list[User]:
         admins = []
         for index in range(count):
+            self.stdout.write("Before make_password")
             email = f"admin{index + 1}@seed.local"
             defaults = {
                 "first_name": "Admin",
@@ -152,7 +167,9 @@ class Command(BaseCommand):
                 "phone_number": self._phone_number(),
                 "password": make_password(password),
             }
+            self.stdout.write("Before update_or_create")
             admin, created = User.objects.update_or_create(email=email, defaults=defaults)
+            self.stdout.write("After update_or_create")
             if created:
                 self.stdout.write(f"Created admin user {email}")
             admins.append(admin)
@@ -165,6 +182,7 @@ class Command(BaseCommand):
         users = []
         existing_emails = set(User.objects.values_list("email", flat=True))
         next_id = 1
+        hashed_password = make_password(password)
         while len(users) < count:
             first_name = random.choice(FIRST_NAMES)
             last_name = random.choice(LAST_NAMES)
@@ -182,7 +200,7 @@ class Command(BaseCommand):
                     phone_number=self._phone_number(),
                     is_active=True,
                     is_staff=(role == User.RoleChoices.ADMIN),
-                    password=make_password(password),
+                    password=hashed_password,
                 )
             )
             existing_emails.add(email)
@@ -216,7 +234,10 @@ class Command(BaseCommand):
                 )
             )
 
-        return Ride.objects.bulk_create(rides, batch_size=1000)
+        Ride.objects.bulk_create(rides, batch_size=1000)
+        return list(
+            Ride.objects.order_by("-id_ride")[:count]
+    )
 
     def _create_ride_events(self, rides: list[Ride]) -> list[RideEvent]:
         events: list[RideEvent] = []
